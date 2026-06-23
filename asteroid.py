@@ -14,10 +14,10 @@ class Asteroid(CircleShape):
     def update(self, dt):
         self.position += self.velocity * dt
     
-    def split(self):
+    def split(self) -> int:
         self.kill()
         if self.radius <= ASTEROID_MIN_RADIUS:
-            return
+            return 100
         
         log_event("asteroid_split")
         random_offset = random.uniform(20, 50)
@@ -30,3 +30,4 @@ class Asteroid(CircleShape):
 
         asteroid_1.velocity = asteroid_1_rotation * 1.2
         asteroid_2.velocity = asteroid_2_rotation * 1.2
+        return 0
