@@ -1,23 +1,31 @@
 from circleshape import CircleShape
 import pygame
-from constants import LINE_WIDTH, PLAYER_SHOOT_SPEED
+from constants import PLAYER_SHOOT_SPEED
 
 class Shot(CircleShape):
-    def __init__(self, x: float, y: float, radius: float) -> None:
+    def __init__(self, x: float, y: float, radius: float, rotation: float = 0.0, color: tuple[int, int, int] = (255, 255, 255)) -> None:
         super().__init__(x, y, radius)
-        diameter = max(1, int(radius * 2))
-        self.rect = pygame.Rect(0, 0, diameter, diameter)
-        self.rect.center = self.position
-        self.mask = self._create_mask()
+        self.rotation = rotation
+        self.color = color
+        self.length = max(30, int(self.radius * 8))
+        self.width = max(1, int(self.radius * 0.4))
+        self.image = self._create_image()
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
-    def _create_mask(self):
-        diameter = max(1, int(self.radius * 2))
-        surface = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
-        pygame.draw.circle(surface, (255, 255, 255), (diameter // 2, diameter // 2), self.radius)
-        return pygame.mask.from_surface(surface)
+    def _create_image(self):
+        size = self.length + self.width * 2
+        surface = pygame.Surface((size, size), pygame.SRCALPHA)
+        center = pygame.Vector2(size // 2, size // 2)
+        start = center - pygame.Vector2(0, self.length / 2)
+        end = center + pygame.Vector2(0, self.length / 2)
+        pygame.draw.line(surface, self.color, start, end, self.width)
+        image = pygame.transform.rotozoom(surface, -self.rotation, 1)
+        return image
 
     def draw(self, screen):
-        pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)
+        self.rect.center = self.position
+        screen.blit(self.image, self.rect)
     
     def update(self, dt):
         self.position += self.velocity * dt

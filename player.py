@@ -21,7 +21,8 @@ class Player(CircleShape):
     def __init__(self, x: int, y: int):
         super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
-        self.shoot_cooldown = 0.0
+        self.front_shoot_cooldown = 0.0
+        self.rear_shoot_cooldown = 0.0
         self.lives = PLAYER_LIVES
         self.invulnerable = False
         self.flash_timer = 0.0
@@ -54,7 +55,8 @@ class Player(CircleShape):
     def update(self, dt: float) -> None:
         keys = pygame.key.get_pressed()
 
-        self.shoot_cooldown -= dt
+        self.front_shoot_cooldown -= dt
+        self.rear_shoot_cooldown -= dt
 
         if keys[pygame.K_a]:
             self.rotate(-dt)
@@ -65,7 +67,9 @@ class Player(CircleShape):
         if keys[pygame.K_s]:
             self.move(-dt)
         if keys[pygame.K_SPACE]:
-            self.shoot()
+            self.shoot(self.front_cannon_offsets(), (255, 0, 0), front=True)
+        if keys[pygame.K_x]:
+            self.shoot(self.rear_cannon_offsets(), (0, 255, 0), front=False)
 
         self.rect.center = self.position
 
@@ -93,10 +97,35 @@ class Player(CircleShape):
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)
 
-    def shoot(self):
-        if self.shoot_cooldown > 0:
-            return
+    def shoot(self, offsets, color=(255, 255, 255), front=True):
+        if front:
+            if self.front_shoot_cooldown > 0:
+                return
+            self.front_shoot_cooldown = PLAYER_SHOOT_COOLDOWN_SECONDS
+        else:
+            if self.rear_shoot_cooldown > 0:
+                return
+            self.rear_shoot_cooldown = PLAYER_SHOOT_COOLDOWN_SECONDS
 
-        self.shoot_cooldown = PLAYER_SHOOT_COOLDOWN_SECONDS
-        shot = Shot(self.position.x, self.position.y, SHOT_RADIUS)
-        shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation) * PLAYER_SHOOT_SPEED
+        forward = pygame.Vector2(0, 1).rotate(self.rotation)
+
+        for offset in offsets:
+            shot_pos = self.position + offset
+            shot = Shot(shot_pos.x, shot_pos.y, SHOT_RADIUS, self.rotation, color)
+            shot.velocity = forward * PLAYER_SHOOT_SPEED
+
+    def front_cannon_offsets(self):
+        forward = pygame.Vector2(0, 1).rotate(self.rotation)
+        right = forward.rotate(-90)
+        return [
+            forward * self.radius * 0.9 + right * self.radius * 0.6,
+            forward * self.radius * 0.9 - right * self.radius * 0.6,
+        ]
+
+    def rear_cannon_offsets(self):
+        forward = pygame.Vector2(0, 1).rotate(self.rotation)
+        right = forward.rotate(-90)
+        return [
+            forward * self.radius * 0.4 + right * self.radius * 1.0,
+            forward * self.radius * 0.4 - right * self.radius * 1.0,
+        ]
