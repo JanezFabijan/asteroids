@@ -3,11 +3,23 @@ from constants import PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAY
 import pygame
 from shot import Shot
 
+PLAYER_FIGHTER_IMAGE = None
+
+def get_player_fighter_image():
+    global PLAYER_FIGHTER_IMAGE
+    if PLAYER_FIGHTER_IMAGE is None:
+        image = pygame.image.load("assets/images/fighter.png").convert()
+        bg_color = image.get_at((0, 0))[:3]
+        image.set_colorkey(bg_color)
+        image = pygame.transform.flip(image, False, True)
+        PLAYER_FIGHTER_IMAGE = image
+    return PLAYER_FIGHTER_IMAGE
+
 
 class Player(CircleShape):
     
     def __init__(self, x: int, y: int):
-        super().__init__(x,y, PLAYER_RADIUS)
+        super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
         self.shoot_cooldown = 0.0
         self.lives = PLAYER_LIVES
@@ -15,10 +27,11 @@ class Player(CircleShape):
         self.flash_timer = 0.0
         self.flash_interval = 0.0
         self.visible = True
-        self.rect = pygame.Rect(0, 0, 0, 0)
-        self.mask = None
-        self._update_mask()
-        self.rect.center = self.position
+        self.base_image = pygame.transform.smoothscale(get_player_fighter_image(), (int(self.radius * 4), int(self.radius * 4)))
+        self.base_image.set_colorkey(self.base_image.get_at((0, 0))[:3])
+        self.image = self.base_image
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def take_hit(self) -> None:
         if self.invulnerable:
@@ -29,27 +42,14 @@ class Player(CircleShape):
         self.flash_interval = PLAYER_FLASH_INTERVAL_SECONDS
         self.visible = False
 
-    def triangle(self) -> list[pygame.Vector2]:
-        return self._triangle_at_position(self.position)
-
-    def _triangle_at_position(self, position: pygame.Vector2) -> list[pygame.Vector2]:
-        forward = pygame.Vector2(0, 1).rotate(self.rotation)
-        right = pygame.Vector2(0, 1).rotate(self.rotation + 90) * self.radius / 1.5
-        a = position + forward * self.radius
-        b = position - forward * self.radius - right
-        c = position - forward * self.radius + right
-        return [a, b, c]
-
     def draw(self, screen):
         if not self.visible:
             return
-        points = self.triangle()
-        pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
+        screen.blit(self.image, self.rect)
     
-
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
-        self._update_mask()
+        self._update_image()
     
     def update(self, dt: float) -> None:
         keys = pygame.key.get_pressed()
@@ -68,7 +68,6 @@ class Player(CircleShape):
             self.shoot()
 
         self.rect.center = self.position
-        self._update_mask()
 
         if self.invulnerable:
             self.flash_timer -= dt
@@ -87,14 +86,12 @@ class Player(CircleShape):
         self.position += rotated_with_speed_vector
         self.rect.center = self.position
 
-    def _update_mask(self) -> None:
-        surface_size = int(self.radius * 4)
-        shape_surface = pygame.Surface((surface_size, surface_size), pygame.SRCALPHA)
-        center = pygame.Vector2(surface_size // 2, surface_size // 2)
-        points = self._triangle_at_position(center)
-        pygame.draw.polygon(shape_surface, (255, 255, 255), points)
-        self.mask = pygame.mask.from_surface(shape_surface)
-        self.rect = shape_surface.get_rect(center=self.position)
+    def _update_image(self) -> None:
+        self.image = pygame.transform.rotozoom(self.base_image, -self.rotation, 1)
+        bg_color = self.base_image.get_at((0, 0))[:3]
+        self.image.set_colorkey(bg_color)
+        self.rect = self.image.get_rect(center=self.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def shoot(self):
         if self.shoot_cooldown > 0:
