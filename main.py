@@ -18,25 +18,49 @@ def main():
 
     clock = pygame.time.Clock()
     dt = 0.0
+
+    def create_button_rect(center, width=260, height=80):
+        rect = pygame.Rect(0, 0, width, height)
+        rect.center = center
+        return rect
+
+    def draw_button(label, center):
+        button_rect = create_button_rect(center)
+        pygame.draw.rect(screen, "black", button_rect)
+        pygame.draw.rect(screen, "white", button_rect, 3)
+        button_text = font.render(label, True, "white")
+        screen.blit(button_text, button_text.get_rect(center=button_rect.center))
+        return button_rect
+
+    def reset_game():
+        nonlocal score, player, asteroidField, updatable, drawable, asteroids, shots, state
+        score = 0
+        state = "playing"
+
+        updatable = pygame.sprite.Group()
+        drawable = pygame.sprite.Group()
+        asteroids = pygame.sprite.Group()
+        shots = pygame.sprite.Group()
+
+        Player.containers = (updatable, drawable)
+        Asteroid.containers = (asteroids, updatable, drawable)
+        Shot.containers = (shots, updatable, drawable)
+        AsteroidField.containers = (updatable)
+
+        player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+        asteroidField = AsteroidField()
+
     score = 0
-    game_over = False
-
-    x = SCREEN_WIDTH / 2
-    y = SCREEN_HEIGHT / 2
-
+    state = "menu"
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
     shots = pygame.sprite.Group()
+    player = None
+    asteroidField = None
 
-    Player.containers = (updatable, drawable)
-    Asteroid.containers = (asteroids, updatable, drawable)
-    Shot.containers = (shots, updatable, drawable)
-    AsteroidField.containers = (updatable)
-
-    player = Player(x, y)
-    asteroidField = AsteroidField()
-
+    play_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
+    replay_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
 
     while True:
         log_state()
@@ -44,8 +68,13 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if state == "menu" and play_button_rect.collidepoint(event.pos):
+                    reset_game()
+                elif state == "game_over" and replay_button_rect.collidepoint(event.pos):
+                    reset_game()
 
-        if not game_over:
+        if state == "playing":
             updatable.update(dt)
 
             for asteroid in asteroids:
@@ -54,7 +83,7 @@ def main():
                     player.take_hit()
                     asteroid.kill()
                     if player.lives <= 0:
-                        game_over = True
+                        state = "game_over"
                         break
 
             for asteroid in asteroids:
@@ -66,19 +95,27 @@ def main():
 
         screen.blit(bg_image, (0, 0))
 
-        for element in drawable:
-            element.draw(screen)
-        score_surface = font.render(f"Score: {score}", True, "white")
-        screen.blit(score_surface, (10, 10))
-        lives_surface = font.render(
-            f"Lives: {'♥' * player.lives}", True, "white"
-        )
-        screen.blit(lives_surface, (10, 50))
-
-        if game_over:
+        if state == "menu":
+            title_surface = font.render("Asteroids", True, "white")
+            title_rect = title_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
+            screen.blit(title_surface, title_rect)
+            play_button_rect = draw_button("Play", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+        elif state == "game_over":
+            for element in drawable:
+                element.draw(screen)
             game_over_surface = font.render("GAME OVER", True, "red")
-            game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2))
+            game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
             screen.blit(game_over_surface, game_over_rect)
+            replay_button_rect = draw_button("Replay", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+        else:
+            for element in drawable:
+                element.draw(screen)
+            score_surface = font.render(f"Score: {score}", True, "white")
+            screen.blit(score_surface, (10, 10))
+            lives_surface = font.render(
+                f"Lives: {'♥' * player.lives}", True, "white"
+            )
+            screen.blit(lives_surface, (10, 50))
 
         pygame.display.flip()
 
