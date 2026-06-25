@@ -1,5 +1,5 @@
 from circleshape import CircleShape
-from constants import PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS
+from constants import PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS
 import pygame
 from shot import Shot
 
@@ -10,6 +10,20 @@ class Player(CircleShape):
         super().__init__(x,y, PLAYER_RADIUS)
         self.rotation = 0
         self.shoot_cooldown = 0.0
+        self.lives = PLAYER_LIVES
+        self.invulnerable = False
+        self.flash_timer = 0.0
+        self.flash_interval = 0.0
+        self.visible = True
+
+    def take_hit(self) -> None:
+        if self.invulnerable:
+            return
+        self.lives = max(0, self.lives - 1)
+        self.invulnerable = True
+        self.flash_timer = PLAYER_FLASH_DURATION
+        self.flash_interval = PLAYER_FLASH_INTERVAL_SECONDS
+        self.visible = False
 
     def triangle(self) -> list[pygame.Vector2]:
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
@@ -20,6 +34,8 @@ class Player(CircleShape):
         return [a, b, c]
 
     def draw(self, screen):
+        if not self.visible:
+            return
         points = self.triangle()
         pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
     
@@ -42,7 +58,17 @@ class Player(CircleShape):
             self.move(-dt)
         if keys[pygame.K_SPACE]:
             self.shoot()
-        
+
+        if self.invulnerable:
+            self.flash_timer -= dt
+            self.flash_interval -= dt
+            if self.flash_interval <= 0:
+                self.visible = not self.visible
+                self.flash_interval += PLAYER_FLASH_INTERVAL_SECONDS
+            if self.flash_timer <= 0:
+                self.invulnerable = False
+                self.visible = True
+
     def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
         rotated_vector = unit_vector.rotate(self.rotation)

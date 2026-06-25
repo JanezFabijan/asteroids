@@ -19,6 +19,7 @@ def main():
     clock = pygame.time.Clock()
     dt = 0.0
     score = 0
+    game_over = False
 
     x = SCREEN_WIDTH / 2
     y = SCREEN_HEIGHT / 2
@@ -37,27 +38,31 @@ def main():
     asteroidField = AsteroidField()
 
 
-    while (True):
+    while True:
         log_state()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
 
-        updatable.update(dt)
+        if not game_over:
+            updatable.update(dt)
 
-        for asteroid in asteroids:
-            if asteroid.collides_with(player):
-                log_event("player_hit")
-                print("Game over!")
-                sys.exit()
-        
-        for asteroid in asteroids:
-            for shot in shots:
-                if asteroid.collides_with(shot):
-                    log_event("asteroid_shot")
-                    score += asteroid.split()
-                    shot.kill()
+            for asteroid in asteroids:
+                if asteroid.collides_with(player) and not player.invulnerable:
+                    log_event("player_hit")
+                    player.take_hit()
+                    asteroid.kill()
+                    if player.lives <= 0:
+                        game_over = True
+                        break
+
+            for asteroid in asteroids:
+                for shot in shots:
+                    if asteroid.collides_with(shot):
+                        log_event("asteroid_shot")
+                        score += asteroid.split()
+                        shot.kill()
 
         screen.blit(bg_image, (0, 0))
 
@@ -65,6 +70,16 @@ def main():
             element.draw(screen)
         score_surface = font.render(f"Score: {score}", True, "white")
         screen.blit(score_surface, (10, 10))
+        lives_surface = font.render(
+            f"Lives: {'♥' * player.lives}", True, "white"
+        )
+        screen.blit(lives_surface, (10, 50))
+
+        if game_over:
+            game_over_surface = font.render("GAME OVER", True, "red")
+            game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2))
+            screen.blit(game_over_surface, game_over_rect)
+
         pygame.display.flip()
 
         game_time = clock.tick(60)
