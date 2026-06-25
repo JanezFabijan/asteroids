@@ -15,6 +15,10 @@ class Player(CircleShape):
         self.flash_timer = 0.0
         self.flash_interval = 0.0
         self.visible = True
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.mask = None
+        self._update_mask()
+        self.rect.center = self.position
 
     def take_hit(self) -> None:
         if self.invulnerable:
@@ -26,11 +30,14 @@ class Player(CircleShape):
         self.visible = False
 
     def triangle(self) -> list[pygame.Vector2]:
+        return self._triangle_at_position(self.position)
+
+    def _triangle_at_position(self, position: pygame.Vector2) -> list[pygame.Vector2]:
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
         right = pygame.Vector2(0, 1).rotate(self.rotation + 90) * self.radius / 1.5
-        a = self.position + forward * self.radius
-        b = self.position - forward * self.radius - right
-        c = self.position - forward * self.radius + right
+        a = position + forward * self.radius
+        b = position - forward * self.radius - right
+        c = position - forward * self.radius + right
         return [a, b, c]
 
     def draw(self, screen):
@@ -42,6 +49,7 @@ class Player(CircleShape):
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
+        self._update_mask()
     
     def update(self, dt: float) -> None:
         keys = pygame.key.get_pressed()
@@ -59,6 +67,9 @@ class Player(CircleShape):
         if keys[pygame.K_SPACE]:
             self.shoot()
 
+        self.rect.center = self.position
+        self._update_mask()
+
         if self.invulnerable:
             self.flash_timer -= dt
             self.flash_interval -= dt
@@ -74,6 +85,16 @@ class Player(CircleShape):
         rotated_vector = unit_vector.rotate(self.rotation)
         rotated_with_speed_vector = rotated_vector * PLAYER_SPEED * dt
         self.position += rotated_with_speed_vector
+        self.rect.center = self.position
+
+    def _update_mask(self) -> None:
+        surface_size = int(self.radius * 4)
+        shape_surface = pygame.Surface((surface_size, surface_size), pygame.SRCALPHA)
+        center = pygame.Vector2(surface_size // 2, surface_size // 2)
+        points = self._triangle_at_position(center)
+        pygame.draw.polygon(shape_surface, (255, 255, 255), points)
+        self.mask = pygame.mask.from_surface(shape_surface)
+        self.rect = shape_surface.get_rect(center=self.position)
 
     def shoot(self):
         if self.shoot_cooldown > 0:

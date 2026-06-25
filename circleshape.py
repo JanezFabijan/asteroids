@@ -24,8 +24,11 @@ class CircleShape(pygame.sprite.Sprite):
         pass
     
     def collides_with(self, other) -> bool:
+        if hasattr(self, "mask") and self.mask is not None and hasattr(other, "mask") and other.mask is not None:
+            if hasattr(self, "rect") and hasattr(other, "rect"):
+                offset = (int(other.rect.left - self.rect.left), int(other.rect.top - self.rect.top))
+                return self.mask.overlap(other.mask, offset) is not None
         r1 = self.radius
-        r2 = other.radius
+        r2 = getattr(other, "radius", 0)
         distance = self.position.distance_to(other.position)
-        coliding = distance - (r1 + r2) <= 0
-        return coliding
+        return distance <= (r1 + r2)
