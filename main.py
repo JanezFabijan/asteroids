@@ -1,11 +1,11 @@
 import pygame
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, ASTEROID_MAX_RADIUS
 from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
 from asteroidfield import AsteroidField
 import sys
-from shot import Shot
+from shot import Shot, Missile, Explosion
 
 def main():
     pygame.init()
@@ -45,6 +45,8 @@ def main():
         Player.containers = (updatable, drawable)
         Asteroid.containers = (asteroids, updatable, drawable)
         Shot.containers = (shots, updatable, drawable)
+        Missile.containers = (shots, updatable, drawable)
+        Explosion.containers = (updatable, drawable)
         AsteroidField.containers = (updatable)
 
         player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
@@ -86,12 +88,23 @@ def main():
                         state = "game_over"
                         break
 
-            for asteroid in asteroids:
-                for shot in shots:
+            for asteroid in list(asteroids):
+                for shot in list(shots):
                     if asteroid.collides_with(shot):
-                        log_event("asteroid_shot")
-                        score += asteroid.split()
-                        shot.kill()
+                        if isinstance(shot, Missile):
+                            log_event("missile_impact")
+                            score += 100
+                            shot.kill()
+                            asteroid.kill()
+                            Explosion(asteroid.position.x, asteroid.position.y, ASTEROID_MAX_RADIUS)
+                            for nearby_asteroid in list(asteroids):
+                                if nearby_asteroid.alive() and nearby_asteroid.position.distance_to(asteroid.position) <= ASTEROID_MAX_RADIUS:
+                                    nearby_asteroid.kill()
+                        else:
+                            log_event("asteroid_shot")
+                            score += asteroid.split()
+                            shot.kill()
+                        break
 
         screen.blit(bg_image, (0, 0))
 

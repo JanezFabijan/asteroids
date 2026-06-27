@@ -1,7 +1,8 @@
+import math
 from circleshape import CircleShape
-from constants import PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS
+from constants import PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS, PLAYER_MISSILE_COOLDOWN_SECONDS
 import pygame
-from shot import Shot
+from shot import Shot, Missile
 
 PLAYER_FIGHTER_IMAGE = None
 
@@ -47,6 +48,26 @@ class Player(CircleShape):
         if not self.visible:
             return
         screen.blit(self.image, self.rect)
+        self.draw_missile_cooldown(screen)
+
+    def draw_missile_cooldown(self, screen):
+        cooldown_remaining = max(0.0, self.rear_shoot_cooldown)
+        progress = 100.0 if cooldown_remaining <= 0 else min(100.0, 100.0 * (1 - cooldown_remaining / PLAYER_MISSILE_COOLDOWN_SECONDS))
+        center = self.position + pygame.Vector2(50, -50)
+        radius = 18
+        rect = pygame.Rect(int(center.x - radius), int(center.y - radius), int(radius * 2), int(radius * 2))
+
+        pygame.draw.circle(screen, (30, 30, 30), (int(center.x), int(center.y)), radius, 3)
+        if progress > 0:
+            start_angle = -math.pi / 2
+            end_angle = start_angle + (progress / 100.0) * (2 * math.pi)
+            pygame.draw.arc(screen, (255, 165, 0), rect, start_angle, end_angle, 3)
+
+        font = pygame.font.SysFont(None, 20)
+        label = "0.0" if cooldown_remaining <= 0 else f"{cooldown_remaining:.1f}"
+        text_surface = font.render(label, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(int(center.x), int(center.y)))
+        screen.blit(text_surface, text_rect)
     
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -69,7 +90,7 @@ class Player(CircleShape):
         if keys[pygame.K_SPACE]:
             self.shoot(self.front_cannon_offsets(), (255, 0, 0), front=True)
         if keys[pygame.K_x]:
-            self.shoot(self.rear_cannon_offsets(), (0, 255, 0), front=False)
+            self.shoot(self.rear_cannon_offsets(), (255, 165, 0), front=False, missile=True)
 
         self.rect.center = self.position
 
@@ -97,7 +118,7 @@ class Player(CircleShape):
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)
 
-    def shoot(self, offsets, color=(255, 255, 255), front=True):
+    def shoot(self, offsets, color=(255, 255, 255), front=True, missile=False):
         if front:
             if self.front_shoot_cooldown > 0:
                 return
@@ -105,13 +126,14 @@ class Player(CircleShape):
         else:
             if self.rear_shoot_cooldown > 0:
                 return
-            self.rear_shoot_cooldown = PLAYER_SHOOT_COOLDOWN_SECONDS
+            self.rear_shoot_cooldown = PLAYER_MISSILE_COOLDOWN_SECONDS
 
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
 
         for offset in offsets:
             shot_pos = self.position + offset
-            shot = Shot(shot_pos.x, shot_pos.y, SHOT_RADIUS, self.rotation, color)
+            shot_cls = Missile if missile else Shot
+            shot = shot_cls(shot_pos.x, shot_pos.y, SHOT_RADIUS, self.rotation, color)
             shot.velocity = forward * PLAYER_SHOOT_SPEED
 
     def front_cannon_offsets(self):
