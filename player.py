@@ -1,6 +1,6 @@
 import math
 from circleshape import CircleShape
-from constants import PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS, PLAYER_MISSILE_COOLDOWN_SECONDS
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS, PLAYER_MISSILE_COOLDOWN_SECONDS
 import pygame
 from shot import Shot, Missile
 
@@ -79,13 +79,13 @@ class Player(CircleShape):
         self.front_shoot_cooldown -= dt
         self.rear_shoot_cooldown -= dt
 
-        if keys[pygame.K_a]:
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             self.rotate(-dt)
-        if keys[pygame.K_d]:
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             self.rotate(dt)
-        if keys[pygame.K_w]:
+        if keys[pygame.K_w] or keys[pygame.K_UP]:
             self.move(dt)
-        if keys[pygame.K_s]:
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
             self.move(-dt)
         if keys[pygame.K_SPACE]:
             self.shoot(self.front_cannon_offsets(), (255, 0, 0), front=True)
@@ -109,6 +109,8 @@ class Player(CircleShape):
         rotated_vector = unit_vector.rotate(self.rotation)
         rotated_with_speed_vector = rotated_vector * PLAYER_SPEED * dt
         self.position += rotated_with_speed_vector
+        self.position.x = max(self.radius, min(SCREEN_WIDTH - self.radius, self.position.x))
+        self.position.y = max(self.radius, min(SCREEN_HEIGHT - self.radius, self.position.y))
         self.rect.center = self.position
 
     def _update_image(self) -> None:

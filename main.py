@@ -9,8 +9,17 @@ from shot import Shot, Missile, Explosion
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    info = pygame.display.Info()
+    screen_width = info.current_w
+    screen_height = info.current_h
+    screen = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
+    world_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     font = pygame.font.Font(None, 36)
+
+    def to_world_pos(pos):
+        x = pos[0] * (SCREEN_WIDTH / screen_width)
+        y = pos[1] * (SCREEN_HEIGHT / screen_height)
+        return (x, y)
 
     # Load background image and scale to screen size
     bg_image = pygame.image.load("assets/images/asteroid_background.png").convert()
@@ -26,10 +35,10 @@ def main():
 
     def draw_button(label, center):
         button_rect = create_button_rect(center)
-        pygame.draw.rect(screen, "black", button_rect)
-        pygame.draw.rect(screen, "white", button_rect, 3)
+        pygame.draw.rect(world_surface, "black", button_rect)
+        pygame.draw.rect(world_surface, "white", button_rect, 3)
         button_text = font.render(label, True, "white")
-        screen.blit(button_text, button_text.get_rect(center=button_rect.center))
+        world_surface.blit(button_text, button_text.get_rect(center=button_rect.center))
         return button_rect
 
     def reset_game():
@@ -54,6 +63,7 @@ def main():
 
     score = 0
     state = "menu"
+    paused = False
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
@@ -63,6 +73,8 @@ def main():
 
     play_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
     replay_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
+    pause_restart_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20), width=260, height=70)
+    pause_close_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 70), width=260, height=70)
 
     while True:
         log_state()
@@ -70,11 +82,25 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    if state == "playing":
+                        paused = True
+                        state = "paused"
+                    elif state == "paused":
+                        paused = False
+                        state = "playing"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if state == "menu" and play_button_rect.collidepoint(event.pos):
+                world_pos = to_world_pos(event.pos)
+                if state == "menu" and play_button_rect.collidepoint(world_pos):
                     reset_game()
-                elif state == "game_over" and replay_button_rect.collidepoint(event.pos):
+                elif state == "game_over" and replay_button_rect.collidepoint(world_pos):
                     reset_game()
+                elif state == "paused":
+                    if pause_restart_rect.collidepoint(world_pos):
+                        reset_game()
+                    elif pause_close_rect.collidepoint(world_pos):
+                        return
 
         if state == "playing":
             updatable.update(dt)
@@ -106,30 +132,43 @@ def main():
                             shot.kill()
                         break
 
-        screen.blit(bg_image, (0, 0))
+        world_surface.fill((0, 0, 0))
+        world_surface.blit(bg_image, (0, 0))
 
         if state == "menu":
             title_surface = font.render("Asteroids", True, "white")
             title_rect = title_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
-            screen.blit(title_surface, title_rect)
+            world_surface.blit(title_surface, title_rect)
             play_button_rect = draw_button("Play", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+        elif state == "paused":
+            for element in drawable:
+                element.draw(world_surface)
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            world_surface.blit(overlay, (0, 0))
+            pause_title = font.render("Paused", True, "white")
+            world_surface.blit(pause_title, pause_title.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 90)))
+            pause_restart_rect = draw_button("Restart", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20))
+            pause_close_rect = draw_button("Exit", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 70))
         elif state == "game_over":
             for element in drawable:
-                element.draw(screen)
+                element.draw(world_surface)
             game_over_surface = font.render("GAME OVER", True, "red")
             game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
-            screen.blit(game_over_surface, game_over_rect)
+            world_surface.blit(game_over_surface, game_over_rect)
             replay_button_rect = draw_button("Replay", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
         else:
             for element in drawable:
-                element.draw(screen)
+                element.draw(world_surface)
             score_surface = font.render(f"Score: {score}", True, "white")
-            screen.blit(score_surface, (10, 10))
+            world_surface.blit(score_surface, (10, 10))
             lives_surface = font.render(
                 f"Lives: {'♥' * player.lives}", True, "white"
             )
-            screen.blit(lives_surface, (10, 50))
+            world_surface.blit(lives_surface, (10, 50))
 
+        scaled_surface = pygame.transform.scale(world_surface, (screen_width, screen_height))
+        screen.blit(scaled_surface, (0, 0))
         pygame.display.flip()
 
         game_time = clock.tick(60)
