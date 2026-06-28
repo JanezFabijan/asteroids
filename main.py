@@ -122,10 +122,14 @@ def main():
                             score += 100
                             shot.kill()
                             asteroid.kill()
-                            Explosion(asteroid.position.x, asteroid.position.y, ASTEROID_MAX_RADIUS)
+                            explosion = Explosion(asteroid.position.x, asteroid.position.y, ASTEROID_MAX_RADIUS)
                             for nearby_asteroid in list(asteroids):
                                 if nearby_asteroid.alive() and nearby_asteroid.position.distance_to(asteroid.position) <= ASTEROID_MAX_RADIUS:
                                     nearby_asteroid.kill()
+                            if player and player.position.distance_to(explosion.position) <= explosion.radius and not player.invulnerable:
+                                player.take_hit()
+                                if player.lives <= 0:
+                                    state = "game_over"
                         else:
                             log_event("asteroid_shot")
                             score += asteroid.split()

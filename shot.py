@@ -1,6 +1,6 @@
 from circleshape import CircleShape
 import pygame
-from constants import ASTEROID_MAX_RADIUS
+from constants import ASTEROID_MAX_RADIUS, SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 class Shot(CircleShape):
@@ -37,6 +37,8 @@ class Missile(Shot):
     def __init__(self, x: float, y: float, radius: float, rotation: float = 0.0, color: tuple[int, int, int] = (255, 255, 255)) -> None:
         super().__init__(x, y, radius, rotation, color)
         self.exploded = False
+        self.max_distance = 350.0
+        self.traveled_distance = 0.0
 
     def _create_image(self):
         size = self.length + self.width * 2
@@ -47,6 +49,23 @@ class Missile(Shot):
         pygame.draw.line(surface, self.color, tail, nose, self.width)
         pygame.draw.circle(surface, self.color, (int(center.x), int(center.y)), max(2, self.width), 0)
         return pygame.transform.rotozoom(surface, -self.rotation, 1)
+
+    def update(self, dt):
+        super().update(dt)
+        self.traveled_distance += self.velocity.length() * dt
+        if self.traveled_distance >= self.max_distance:
+            self.explode()
+            return
+
+        if self.position.x <= 0 or self.position.x >= SCREEN_WIDTH or self.position.y <= 0 or self.position.y >= SCREEN_HEIGHT:
+            self.explode()
+
+    def explode(self):
+        if self.exploded:
+            return
+        self.exploded = True
+        Explosion(self.position.x, self.position.y, ASTEROID_MAX_RADIUS)
+        self.kill()
 
 
 class Explosion(CircleShape):
