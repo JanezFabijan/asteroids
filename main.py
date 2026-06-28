@@ -72,7 +72,9 @@ def main():
     asteroidField = None
 
     play_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
+    exit_menu_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 200))
     replay_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100))
+    exit_game_over_button_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 200))
     pause_restart_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20), width=260, height=70)
     pause_close_rect = create_button_rect((SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 70), width=260, height=70)
 
@@ -92,10 +94,16 @@ def main():
                         state = "playing"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 world_pos = to_world_pos(event.pos)
-                if state == "menu" and play_button_rect.collidepoint(world_pos):
-                    reset_game()
-                elif state == "game_over" and replay_button_rect.collidepoint(world_pos):
-                    reset_game()
+                if state == "menu":
+                    if play_button_rect.collidepoint(world_pos):
+                        reset_game()
+                    elif exit_menu_button_rect.collidepoint(world_pos):
+                        return
+                elif state == "game_over":
+                    if replay_button_rect.collidepoint(world_pos):
+                        reset_game()
+                    elif exit_game_over_button_rect.collidepoint(world_pos):
+                        return
                 elif state == "paused":
                     if pause_restart_rect.collidepoint(world_pos):
                         reset_game()
@@ -144,6 +152,7 @@ def main():
             title_rect = title_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
             world_surface.blit(title_surface, title_rect)
             play_button_rect = draw_button("Play", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+            exit_menu_button_rect = draw_button("Exit", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 140))
         elif state == "paused":
             for element in drawable:
                 element.draw(world_surface)
@@ -160,7 +169,8 @@ def main():
             game_over_surface = font.render("GAME OVER", True, "red")
             game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80))
             world_surface.blit(game_over_surface, game_over_rect)
-            replay_button_rect = draw_button("Replay", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+            replay_button_rect = draw_button("Restart", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40))
+            exit_game_over_button_rect = draw_button("Exit", (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 140))
         else:
             for element in drawable:
                 element.draw(world_surface)
