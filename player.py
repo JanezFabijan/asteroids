@@ -1,6 +1,7 @@
 import math
 from circleshape import CircleShape
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_FLASH_DURATION, PLAYER_FLASH_INTERVAL_SECONDS, PLAYER_LIVES, PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, SHOT_RADIUS, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS, PLAYER_MISSILE_COOLDOWN_SECONDS
+from player_ship_shape import build_player_ship_polygon_from_surface
 import pygame
 from shot import Shot, Missile
 
@@ -9,7 +10,7 @@ PLAYER_FIGHTER_IMAGE = None
 def get_player_fighter_image():
     global PLAYER_FIGHTER_IMAGE
     if PLAYER_FIGHTER_IMAGE is None:
-        image = pygame.image.load("assets/images/fighter.png").convert()
+        image = pygame.image.load("assets/images/fighter.png").convert_alpha()
         bg_color = image.get_at((0, 0))[:3]
         image.set_colorkey(bg_color)
         image = pygame.transform.flip(image, False, True)
@@ -29,11 +30,12 @@ class Player(CircleShape):
         self.flash_timer = 0.0
         self.flash_interval = 0.0
         self.visible = True
-        self.base_image = pygame.transform.smoothscale(get_player_fighter_image(), (int(self.radius * 4), int(self.radius * 4)))
+        self.base_image = pygame.transform.smoothscale(get_player_fighter_image(), (int(self.radius * 6), int(self.radius * 6)))
         self.base_image.set_colorkey(self.base_image.get_at((0, 0))[:3])
+        self.local_collision_polygon = build_player_ship_polygon_from_surface(self.base_image, self.radius)
         self.image = self.base_image
-        self.rect = self.image.get_rect(center=self.position)
-        self.mask = pygame.mask.from_surface(self.image)
+        self.collision_radius = self.radius * 0.7
+        self._sync_collision_shape()
 
     def take_hit(self) -> None:
         if self.invulnerable:
@@ -111,14 +113,21 @@ class Player(CircleShape):
         self.position += rotated_with_speed_vector
         self.position.x = max(self.radius, min(SCREEN_WIDTH - self.radius, self.position.x))
         self.position.y = max(self.radius, min(SCREEN_HEIGHT - self.radius, self.position.y))
-        self.rect.center = self.position
+        self._sync_collision_shape()
 
-    def _update_image(self) -> None:
-        self.image = pygame.transform.rotozoom(self.base_image, -self.rotation, 1)
-        bg_color = self.base_image.get_at((0, 0))[:3]
-        self.image.set_colorkey(bg_color)
+    def _sync_collision_shape(self) -> None:
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)
+        self.collision_polygon = self._world_collision_polygon()
+
+    def _world_collision_polygon(self):
+        return [point.rotate(self.rotation) + self.position for point in self.local_collision_polygon]
+
+    def _update_image(self) -> None:
+        self.image = pygame.transform.rotozoom(self.base_image, -self.rotation, 1.0)
+        bg_color = self.base_image.get_at((0, 0))[:3]
+        self.image.set_colorkey(bg_color)
+        self._sync_collision_shape()
 
     def shoot(self, offsets, color=(255, 255, 255), front=True, missile=False):
         if front:

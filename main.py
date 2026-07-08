@@ -14,16 +14,24 @@ def main():
     screen_height = info.current_h
     screen = pygame.display.set_mode((screen_width, screen_height), pygame.FULLSCREEN)
     world_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    font = pygame.font.Font(None, 36)
+    render_scale = 1
+    scaled_width = max(1, int(SCREEN_WIDTH * render_scale))
+    scaled_height = max(1, int(SCREEN_HEIGHT * render_scale))
+    offset_x = (screen_width - scaled_width) // 2
+    offset_y = (screen_height - scaled_height) // 2
+    font_size = max(64, int(32 * render_scale))
+    small_font_size = max(64, int(24 * render_scale))
+    font = pygame.font.Font(None, font_size)
+    small_font = pygame.font.Font(None, small_font_size)
 
     def to_world_pos(pos):
-        x = pos[0] * (SCREEN_WIDTH / screen_width)
-        y = pos[1] * (SCREEN_HEIGHT / screen_height)
+        x = (pos[0] - offset_x) / render_scale
+        y = (pos[1] - offset_y) / render_scale
         return (x, y)
 
-    # Load background image and scale to screen size
+    # Load background image and scale to the logical game size
     bg_image = pygame.image.load("assets/images/asteroid_background.png").convert()
-    bg_image = pygame.transform.scale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+    bg_image = pygame.transform.smoothscale(bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
     clock = pygame.time.Clock()
     dt = 0.0
@@ -174,15 +182,15 @@ def main():
         else:
             for element in drawable:
                 element.draw(world_surface)
-            score_surface = font.render(f"Score: {score}", True, "white")
+            score_surface = small_font.render(f"Score: {score}", True, "white")
             world_surface.blit(score_surface, (10, 10))
-            lives_surface = font.render(
+            lives_surface = small_font.render(
                 f"Lives: {'♥' * player.lives}", True, "white"
             )
-            world_surface.blit(lives_surface, (10, 50))
+            world_surface.blit(lives_surface, (10, 40))
 
-        scaled_surface = pygame.transform.scale(world_surface, (screen_width, screen_height))
-        screen.blit(scaled_surface, (0, 0))
+        scaled_surface = pygame.transform.smoothscale(world_surface, (scaled_width, scaled_height))
+        screen.blit(scaled_surface, (offset_x, offset_y))
         pygame.display.flip()
 
         game_time = clock.tick(60)
